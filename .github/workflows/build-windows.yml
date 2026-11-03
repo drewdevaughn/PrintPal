@@ -1,0 +1,51 @@
+name: Build Windows packages
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-build.txt
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Run tests
+        run: python -m unittest discover -s tests
+
+      - name: Build packages
+        run: powershell -ExecutionPolicy Bypass -File .\build.ps1
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: PrintPal-Windows
+          if-no-files-found: error
+          path: |
+            dist/installer/PrintPal-Setup-*.exe
+            dist/PrintPal-Portable-*.zip
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/installer/PrintPal-Setup-*.exe
+            dist/PrintPal-Portable-*.zip

@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PrintPal — thermal text &amp; image studio</title>
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+            <rect x="3" y="11" width="26" height="13" rx="4" />
+            <path d="M8 11V6.5A2.5 2.5 0 0 1 10.5 4h11A2.5 2.5 0 0 1 24 6.5V11" />
+            <path d="M8 20h16v6.5A1.5 1.5 0 0 1 22.5 28h-13A1.5 1.5 0 0 1 8 26.5Z" />
+            <path d="M11 24h10" />
+          </svg>
+          <div class="brand-text">
+            <h1>PrintPal</h1>
+            <span>thermal text &amp; image studio</span>
+          </div>
+        </div>
+
+        <div class="project">
+          <input id="project-name" class="project-name" value="Welcome note" spellcheck="false" aria-label="Project name" />
+          <span class="saved" id="saved-state">saved locally</span>
+        </div>
+
+        <div class="top-actions">
+          <button class="btn ghost" id="btn-new" title="Start a fresh document">New</button>
+          <button class="btn ghost" id="btn-save" title="Save project as .json">Save</button>
+          <button class="btn ghost" id="btn-open" title="Open a .json project">Open</button>
+          <button class="btn ghost" id="btn-export" title="Download the 1-bit preview as PNG">Export PNG</button>
+          <button class="device-pill" id="device-pill" title="Manage printer connection">
+            <span class="dot" id="conn-dot"></span>
+            <span id="device-pill-text">No printer</span>
+          </button>
+          <button class="btn primary" id="btn-print-top">Print</button>
+        </div>
+      </header>
+
+      <main class="layout">
+        <aside class="rail">
+          <section class="card">
+            <div class="card-head">
+              <h2>Printer</h2>
+              <span class="pill" id="protocol-pill" hidden>ESC/POS</span>
+            </div>
+            <div class="printer-name" id="printer-name">No printer connected</div>
+            <div class="printer-meta" id="printer-meta">YHK / CCHW · Bluetooth LE</div>
+
+            <div class="battery" id="battery" hidden>
+              <div class="battery-head"><span>Battery</span><strong id="battery-label">—</strong></div>
+              <div class="battery-track"><div class="battery-fill" id="battery-fill"></div></div>
+              <div class="battery-sub" id="battery-sub"></div>
+            </div>
+
+            <div class="btn-row">
+              <button class="btn accent" id="btn-connect">Connect</button>
+              <button class="btn ghost" id="btn-test" disabled>Test page</button>
+              <button class="btn ghost" id="btn-calibration" disabled>Calibration</button>
+              <button class="btn ghost" id="btn-feed" disabled>Feed</button>
+            </div>
+
+            <label class="switch">
+              <input type="checkbox" id="auto-connect" checked />
+              <span class="switch-track"></span>
+              <span>Auto-connect on launch</span>
+            </label>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <h2>Print quality</h2>
+              <button class="link" id="btn-reset-quality">Reset</button>
+            </div>
+
+            <label class="field">
+              <span>Rendering</span>
+              <select id="opt-dither">
+                <option value="auto">Auto — crisp text, dithered photos</option>
+                <option value="floyd">Floyd–Steinberg (photos)</option>
+                <option value="atkinson">Atkinson (high contrast)</option>
+                <option value="bayer8">Bayer 8×8 (retro)</option>
+                <option value="bayer4">Bayer 4×4 (coarse)</option>
+                <option value="threshold">Hard threshold (text)</option>
+              </select>
+            </label>
+
+            <label class="field range-field">
+              <span>Threshold <output id="out-threshold">160</output></span>
+              <input type="range" id="opt-threshold" min="40" max="240" value="160" />
+            </label>
+
+            <div class="field-grid">
+              <label class="field range-field">
+                <span>Brightness <output id="out-brightness">0</output></span>
+                <input type="range" id="opt-brightness" min="-60" max="60" value="0" />
+              </label>
+              <label class="field range-field">
+                <span>Contrast <output id="out-contrast">0</output></span>
+                <input type="range" id="opt-contrast" min="-60" max="60" value="0" />
+              </label>
+            </div>
+
+            <div class="field-grid">
+              <label class="field">
+                <span>Paper dots</span>
+                <select id="opt-width">
+                  <option value="384">384 · 58 mm</option>
+                  <option value="576">576 · 80 mm</option>
+                  <option value="320">320 dots</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Side margin</span>
+                <input type="number" id="opt-margin" min="0" max="80" value="10" />
+              </label>
+            </div>
+
+            <details class="more">
+              <summary>More output options</summary>
+              <div class="field-grid">
+                <label class="field">
+                  <span>Feed after print</span>
+                  <input type="number" id="opt-feed" min="1" max="12" value="4" />
+                </label>
+                <label class="field">
+                  <span>Render quality</span>
+                  <select id="opt-supersample">
+                    <option value="2">High (2×)</option>
+                    <option value="1">Fast (1×)</option>
+                  </select>
+                </label>
+              </div>
+              <label class="switch compact">
+                <input type="checkbox" id="opt-rotate" />
+                <span class="switch-track"></span>
+                <span>Rotate output 180°</span>
+              </label>
+              <label class="switch compact">
+                <input type="checkbox" id="opt-invert" />
+                <span class="switch-track"></span>
+                <span>Invert black / white</span>
+              </label>
+            </details>
+          </section>
+
+          <section class="card log-card">
+            <div class="card-head">
+              <h2>Activity</h2>
+              <button class="link" id="btn-clear-log">Clear</button>
+            </div>
+            <div class="log" id="log"></div>
+          </section>
+        </aside>
+
+        <section class="editor" id="editor">
+          <div class="editor-toolbar">
+            <div class="mode-switch" id="mode-switch" role="group" aria-label="Workspace">
+              <button data-mode="document" class="active">Document</button>
+              <button data-mode="labels">Label maker</button>
+            </div>
+            <div class="add-group" id="doc-tools" role="group" aria-label="Add block">
+              <button class="btn chip" data-add="text">+ Text</button>
+              <button class="btn chip" data-add="image">+ Image</button>
+              <button class="btn chip" data-add="divider">+ Divider</button>
+              <button class="btn chip" data-add="qr">+ QR</button>
+              <button class="btn chip" data-add="spacer">+ Space</button>
+            </div>
+            <div class="template-group" id="template-tools">
+              <select id="template-select" aria-label="Templates">
+                <option value="">Load template…</option>
+                <option value="note">Study note</option>
+                <option value="todo">To-do list</option>
+                <option value="journal">Journal entry</option>
+                <option value="photo">Photo card</option>
+                <option value="receipt">Receipt / list</option>
+                <option value="qrcard">QR card</option>
+                <option value="blank">Blank page</option>
+              </select>
+              <button class="btn ghost" id="btn-template">Use</button>
+            </div>
+          </div>
+
+          <section class="label-maker" id="label-maker" hidden>
+            <div class="label-head">
+              <div class="label-kinds" id="label-kind" role="group" aria-label="Label type">
+                <button data-kind="list" class="active">
+                  <strong>Label list</strong>
+                  <span>One sticker per line</span>
+                </button>
+                <button data-kind="shelf">
+                  <strong>Shelf tag</strong>
+                  <span>Big text + footnote + barcode</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="label-panel" id="panel-list">
+              <label class="field">
+                <span>Type or paste your list — one label per line, blank lines skipped</span>
+                <textarea
+                  id="label-list-text"
+                  class="text-input label-list-text"
+                  spellcheck="false"
+                  placeholder="Pantry&#10;Freezer&#10;Spices&#10;Cables"
+                ></textarea>
+              </label>
+              <div class="label-grid">
+                <label class="field">
+                  <span>Font</span>
+                  <select id="label-list-font"></select>
+                </label>
+                <label class="field">
+                  <span>Largest letter size</span>
+                  <input type="number" id="label-list-size" min="16" max="120" value="64" />
+                </label>
+                <label class="field">
+                  <span>Gap between labels</span>
+                  <input type="number" id="label-list-gap" min="0" max="200" value="18" />
+                </label>
+                <label class="field label-check">
+                  <span>Style</span>
+                  <label class="switch compact">
+                    <input type="checkbox" id="label-list-bold" checked />
+                    <span class="switch-track"></span>
+                    <span>Bold letters</span>
+                  </label>
+                </label>
+              </div>
+              <div class="label-summary" id="label-list-summary">0 labels</div>
+            </div>
+
+            <div class="label-panel" id="panel-shelf" hidden>
+              <label class="field">
+                <span>Item name — left aligned, sized to fill the tag, up to 2 lines</span>
+                <input id="shelf-title" maxlength="120" placeholder="ORGANIC PEANUT BUTTER" />
+              </label>
+              <label class="field">
+                <span>Footnote — prints smaller, bold and all caps</span>
+                <input id="shelf-footnote" maxlength="120" placeholder="12.99 · AISLE 4" />
+              </label>
+              <div class="label-grid">
+                <label class="field">
+                  <span>Font</span>
+                  <select id="shelf-font"></select>
+                </label>
+                <label class="field">
+                  <span>Barcode data — 12 characters or fewer scans best</span>
+                  <input id="shelf-barcode-data" maxlength="64" placeholder="Leave blank to use the footnote" />
+                </label>
+                <label class="field">
+                  <span>Title max size (dots)</span>
+                  <input type="number" id="shelf-max-size" min="16" max="140" step="2" />
+                </label>
+                <label class="field">
+                  <span>Footnote size (dots)</span>
+                  <input type="number" id="shelf-footnote-size" min="10" max="40" step="1" />
+                </label>
+              </div>
+              <label class="switch compact">
+                <input type="checkbox" id="shelf-barcode" />
+                <span class="switch-track"></span>
+                <span>Add a barcode strip along the bottom</span>
+              </label>
+              <p class="label-note">
+                The name auto-fits up to two lines. Smaller title sizes and a footnote of 18 px or more
+                stay readable at 203 dpi. The barcode is drawn at print resolution, so keep its data short.
+              </p>
+            </div>
+          </section>
+
+          <div class="blocks" id="blocks"></div>
+          <div class="drop-hint" id="drop-hint">Drop images or .txt files here to add them</div>
+        </section>
+
+        <aside class="preview-pane">
+          <div class="preview-head">
+            <div>
+              <h2>Live preview</h2>
+              <span class="preview-stats" id="preview-stats">384 px · 0 mm</span>
+            </div>
+            <div class="seg zoom" id="zoom-seg">
+              <button data-zoom="0.5">50%</button>
+              <button data-zoom="0.75">75%</button>
+              <button data-zoom="1" class="active">100%</button>
+              <button data-zoom="1.5">150%</button>
+            </div>
+          </div>
+
+          <div class="preview-warnings" id="preview-warnings" hidden></div>
+
+          <div class="paper-scroll" id="paper-scroll">
+            <div class="paper" id="paper">
+              <img id="preview-img" alt="1-bit print preview" />
+              <div class="paper-empty" id="paper-empty">Add a block to see the print preview</div>
+              <div class="paper-loading" id="paper-loading"><span></span></div>
+            </div>
+          </div>
+
+          <div class="print-bar">
+            <div class="job" id="job" hidden>
+              <div class="job-line">
+                <span id="job-msg">Preparing…</span>
+                <button class="link" id="btn-cancel">Cancel</button>
+              </div>
+              <div class="progress"><div class="progress-fill" id="job-bar"></div></div>
+            </div>
+            <div class="print-row">
+              <label class="copies">Copies <input type="number" id="copies" min="1" max="20" value="1" /></label>
+              <button class="btn primary big" id="btn-print">Print page</button>
+            </div>
+            <div class="print-note" id="print-note">Ctrl+P to print · the preview is exactly what the head burns</div>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="connect-modal" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="connect-title">
+        <header class="modal-head">
+          <div>
+            <h2 id="connect-title">Connect a printer</h2>
+            <p>YHK / CCHW mini thermal printers over Bluetooth LE or a Windows COM port.</p>
+          </div>
+          <button class="icon-btn" id="btn-close-modal" aria-label="Close">×</button>
+        </header>
+
+        <div class="tabs" id="connect-tabs">
+          <button data-tab="ble" class="active">Bluetooth LE</button>
+          <button data-tab="serial">Serial / COM</button>
+        </div>
+
+        <section class="tab-panel" id="tab-ble">
+          <div class="scan-row">
+            <button class="btn accent" id="btn-scan">Scan for printers</button>
+            <span class="scan-status" id="scan-status">Power the printer on first</span>
+          </div>
+          <p class="hint">
+            The printer must be <strong>on</strong> and disconnected from the WalkPrint phone app.
+            It advertises as <code>YHK-…</code> with the ISSC UART service.
+          </p>
+          <div class="device-list" id="ble-list">
+            <p class="empty-list">No scan yet.</p>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="tab-serial" hidden>
+          <div class="scan-row">
+            <button class="btn accent" id="btn-ports">Refresh ports</button>
+            <span class="scan-status" id="port-status">Pair the printer in Windows first</span>
+          </div>
+          <p class="hint">
+            Windows → Settings → Bluetooth &amp; devices → Add device → Bluetooth. After pairing,
+            a <strong>Standard Serial over Bluetooth link (COMx)</strong> port appears. Pick it below.
+          </p>
+          <div class="device-list" id="port-list">
+            <p class="empty-list">No serial ports detected.</p>
+          </div>
+          <label class="field inline-field">
+            <span>Baud rate</span>
+            <input type="number" id="baud" value="115200" />
+          </label>
+        </section>
+
+        <details class="advanced">
+          <summary>Advanced / diagnostics</summary>
+          <div class="advanced-body">
+            <label class="field">
+              <span>Protocol</span>
+              <select id="adv-protocol">
+                <option value="auto">Auto-detect</option>
+                <option value="escpos">ESC/POS raster (YHK-0A73)</option>
+                <option value="cat">AE30 cat-printer</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Manual BLE address</span>
+              <input id="adv-address" placeholder="24:00:38:00:0A:73" spellcheck="false" />
+            </label>
+            <div class="btn-row">
+              <button class="btn ghost" id="btn-manual-connect">Connect address</button>
+              <button class="btn ghost" id="btn-disconnect" disabled>Disconnect</button>
+            </div>
+            <label class="switch compact">
+              <input type="checkbox" id="adv-write-response" />
+              <span class="switch-track"></span>
+              <span>Always write with response (slower, more reliable)</span>
+            </label>
+            <div class="raw-row">
+              <input id="adv-hex" placeholder="1E 47 03" spellcheck="false" />
+              <button class="btn ghost" id="btn-raw">Send bytes</button>
+            </div>
+            <pre class="device-dump" id="device-dump">No device information.</pre>
+          </div>
+        </details>
+
+        <footer class="modal-foot">
+          <span id="modal-status">Not connected</span>
+          <button class="btn ghost" id="btn-modal-test" disabled>Print test page</button>
+        </footer>
+      </div>
+    </div>
+
+    <input type="file" id="image-input" accept="image/*" multiple hidden />
+    <input type="file" id="project-input" accept=".json,application/json" hidden />
+    <div class="toasts" id="toasts"></div>
+
+    <script type="module" src="/static/app.js"></script>
+  </body>
+</html>
